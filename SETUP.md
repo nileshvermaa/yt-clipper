@@ -165,3 +165,17 @@ python -m clipper compile --upload         # uploads approved compilations (Priv
 
 Cut from the local 1080p copies (NVENC, loudness -14 LUFS), max 2 segments per source video, clips are never
 reused in a later compilation. Output: `workspace/compilations/<date>.mp4/.json/.sheet.jpg`.
+
+## Analytics feedback loop
+
+`python -m clipper stats` pulls views, likes and privacy for every uploaded video (Data API, 1 quota unit per
+50 videos) and retention / subscribers gained (YouTube Analytics API, separate free quota). Once at least 8
+**public** Shorts are 2+ days old it writes `workspace/insights.txt`: best and weakest source channels, which
+clip length holds viewers, and the titles that worked or flopped. Every new `candidates.txt` includes it, so
+clip picking learns from your own channel. Private videos have no views, so nothing is learned until you
+publish.
+
+One-time setup:
+1. Google Cloud console > APIs & Services > Library: enable **YouTube Analytics API** (Data API v3 is already on).
+2. OAuth consent screen > Data access: add scopes `youtube.readonly` and `yt-analytics.readonly`.
+3. Run `python -m clipper auth` again and accept. Uploads keep working with the old token until you do.

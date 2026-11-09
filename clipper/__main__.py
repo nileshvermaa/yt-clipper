@@ -5,6 +5,7 @@
   python -m clipper watch [--upload]          check channels.txt for new videos
   python -m clipper upload-pending            upload rendered clips not yet uploaded (respects quota)
   python -m clipper status                    show clips and quota use
+  python -m clipper stats                     pull views/retention, refresh insights.txt
 
 No-API-key mode (Claude in the app picks the clips):
   python -m clipper prepare [url ...]         download + transcribe -> workspace/<id>/candidates.txt
@@ -300,6 +301,7 @@ def main():
     w = sub.add_parser("watch"); w.add_argument("--upload", action="store_true")
     sub.add_parser("upload-pending")
     sub.add_parser("status")
+    sub.add_parser("stats", help="pull views/retention of uploaded videos and refresh insights.txt")
     pr = sub.add_parser("prepare", help="no-API mode: download+transcribe, write candidates.txt")
     pr.add_argument("urls", nargs="*", help="video URLs; omit to use new videos from channels.txt")
     sub.add_parser("awaiting", help="list candidates.txt files that still need picks.json")
@@ -391,6 +393,11 @@ def main():
         cmd_upload_pending()
     elif a.cmd == "status":
         cmd_status()
+    elif a.cmd == "stats":
+        from . import analytics
+        print(f"  updated stats for {analytics.fetch()} videos")
+        text, n = analytics.insights()
+        print(text or f"  {n} public Shorts old enough to judge; insights start at {analytics.MIN_SAMPLES}")
 
 
 if __name__ == "__main__":

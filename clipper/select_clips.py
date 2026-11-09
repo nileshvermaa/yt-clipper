@@ -117,6 +117,9 @@ def prepare(meta, segments):
     if not index:
         raise RuntimeError("Transcript is empty; nothing to clip.")
     rules = SYSTEM.format(lo=config.MIN_CLIP_SEC, hi=config.MAX_CLIP_SEC, n=config.CLIPS_PER_VIDEO)
+    insights = config.WORKSPACE / "insights.txt"  # written by `clipper stats` from this channel's own analytics
+    if insights.exists():
+        rules += "\n\nWHAT WORKS ON THIS CHANNEL (own analytics):\n" + insights.read_text(encoding="utf-8")
     (work / "candidates.txt").write_text(
         f"{rules}\n\nAnswer by writing picks.json in this folder: "
         '{"clips": [{"start_line", "end_line", "title", "description", "tags", "score"}]}\n\n'

@@ -6,7 +6,9 @@ import time
 
 from . import config
 
-SCOPES = ["https://www.googleapis.com/auth/youtube.upload"]
+SCOPES = ["https://www.googleapis.com/auth/youtube.upload",
+          "https://www.googleapis.com/auth/youtube.readonly",       # video stats for the feedback loop
+          "https://www.googleapis.com/auth/yt-analytics.readonly"]  # retention for the feedback loop
 
 
 def authorize():
@@ -20,17 +22,26 @@ def authorize():
     print(f"Saved token to {config.TOKEN_FILE}")
 
 
-def _service():
+def _creds():
     from google.auth.transport.requests import Request
     from google.oauth2.credentials import Credentials
-    from googleapiclient.discovery import build
     if not config.TOKEN_FILE.exists():
         raise SystemExit("Not authorized. Run: python -m clipper auth")
-    creds = Credentials.from_authorized_user_file(str(config.TOKEN_FILE), SCOPES)
+    # no scopes argument: refresh with whatever the saved token was granted, so an older upload-only token keeps working
+    creds = Credentials.from_authorized_user_file(str(config.TOKEN_FILE))
     if not creds.valid:
         creds.refresh(Request())
         config.TOKEN_FILE.write_text(creds.to_json(), encoding="utf-8")
-    return build("youtube", "v3", credentials=creds, cache_discovery=False)
+    return creds
+
+
+def granted(scope):
+    return scope in (json.loads(config.TOKEN_FILE.read_text(encoding="utf-8")).get("scopes") or [])
+
+
+def _service(api="youtube", version="v3"):
+    from googleapiclient.discovery import build
+    return build(api, version, credentials=_creds(), cache_discovery=False)
 
 
 def _state():

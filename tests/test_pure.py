@@ -35,3 +35,14 @@ def test_caption_problem_accepts_speech():
             "witnesses before they respond which changes how every heist plays out in vice city this time around "
             "players can split up hide stolen cars in garages and even remove trackers before selling them later on")
     assert transcribe.caption_problem(_segs(text.split() * 2)) is None
+
+
+def test_summarize_insights():
+    from clipper import analytics
+    rows = [{"title": f"t{i}", "channel": "A" if i % 2 else "B", "dur": 30 + i * 5, "kind": "short",
+             "views": i * 100, "retention_pct": 50 + i} for i in range(10)]
+    assert analytics.summarize(rows[:3]) is None  # too few samples
+    text = analytics.summarize(rows)
+    assert "Best source channels: A" in text
+    assert "t9 (900)" in text.split("Titles that worked:")[1]
+    assert "% watched" in text
