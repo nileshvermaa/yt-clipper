@@ -1,0 +1,15 @@
+﻿yt-dlp>=2025.1.1
+faster-whisper>=1.1.0
+ctranslate2==4.5.0  # 4.8.x crashes on this setup
+onnxruntime-gpu==1.19.2  # GPU build (pip check may say faster-whisper wants 'onnxruntime'; same module). 1.31 crashes here
+nvidia-cuda-runtime-cu12  # GPU only
+nvidia-cufft-cu12  # GPU only
+nvidia-curand-cu12  # GPU only
+nvidia-cublas-cu12  # GPU only
+nvidia-cudnn-cu12==9.*  # GPU only
+anthropic>=0.40.0
+opencv-python>=4.9
+python-dotenv>=1.0
+google-api-python-client>=2.130
+google-auth-oauthlib>=1.2
+google-auth>=2.30

@@ -1,0 +1,17 @@
+[project]
+name = "yt-clipper"
+version = "0.1.0"
+description = "GPU-first pipeline that turns long YouTube videos into captioned vertical Shorts and weekly compilations"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "B"]
+ignore = ["E501", "B008", "E702", "E731", "B007", "B904", "B905"]  # style-only; existing code uses compact one-liners
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

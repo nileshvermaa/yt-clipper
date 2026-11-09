@@ -1,0 +1,19 @@
+name: ci
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  lint-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      # only the light deps the tests import; the GPU stack (onnxruntime-gpu, CUDA wheels, whisper) stays local
+      - run: pip install ruff pytest python-dotenv yt-dlp
+      - run: ruff check .
+      - run: pytest -q

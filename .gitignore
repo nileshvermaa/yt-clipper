@@ -1,0 +1,27 @@
+# secrets and local config - never commit
+.env
+secrets/
+cookies.txt
+*.token.json
+channels.txt
+
+# data and outputs
+workspace/
+models/*.onnx
+*.mp4
+*.webm
+*.json3
+*.pdf
+
+# python / tooling
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.claude/
+.vscode/
+.idea/
+Thumbs.db
+.DS_Store

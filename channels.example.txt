@@ -1,0 +1,12 @@
+# One channel per line:  URL | keywords   (only videos whose title has a keyword are clipped; no keywords = all)
+# Top GTA 6 channels (found by searching YouTube for GTA 6 content, Nov 2026). Check each allows clipping.
+https://www.youtube.com/channel/UC72PuhDwKtZ5MikpGNhPAtA | gta 6, gta6, gta vi, gta 5 vs   # TGG
+https://www.youtube.com/channel/UCzVXdulvpgEoI8yuFMmhxJw | gta 6, gta6, gta vi   # The GTA Assassin
+https://www.youtube.com/channel/UCV6mNrW8CrmWtcxWfQXy11g | gta 6, gta6, gta vi   # DarkViperAU
+https://www.youtube.com/channel/UCI1-J45WXprOQQ_m9pmfW9A | gta 6, gta6, gta vi   # Hazard
+https://www.youtube.com/channel/UC0PMQXAwF6O6aeTpv962miA | gta 6, gta6, gta vi   # MrBossFTW
+https://www.youtube.com/channel/UC2a1dJNQ1UUWYX4rMv5m-5g | gta 6, gta6, gta vi   # The Outlaw
+https://www.youtube.com/channel/UC1lRz_clX4l9ORCtjDRBs1g | gta 6, gta6, gta vi   # Jetro
+https://www.youtube.com/channel/UCxaLc3KI5PAXMMcVgsEc45A | gta 6, gta6, gta vi   # Glooby
+https://www.youtube.com/channel/UCYBetkejPxK8t_41zueazcA | gta 6, gta6, gta vi   # T5G
+https://www.youtube.com/channel/UCNvzD7Z-g64bPXxGzaQaa4g | gta 6, gta6, gta vi   # gameranx
