@@ -90,8 +90,8 @@ def summarize(rows):
     def fmt(ch, rs):
         return f"{ch} ({len(rs)} Shorts, avg {mean(r['views'] for r in rs):,.0f} views)"
     lines.append("Best source channels: " + "; ".join(fmt(c, rs) for c, rs in ranked[:3]))
-    if len(ranked) > 3:
-        lines.append("Weakest source channels: " + "; ".join(fmt(c, rs) for c, rs in ranked[-2:]))
+    if len(ranked) > 3:  # only channels not already listed as best
+        lines.append("Weakest source channels: " + "; ".join(fmt(c, rs) for c, rs in ranked[3:][-2:]))
     parts = []
     for name, lo, hi in (("under 35s", 0, 35), ("35-55s", 35, 55), ("over 55s", 55, 999)):
         rs = [r for r in rows if lo <= r["dur"] < hi]
