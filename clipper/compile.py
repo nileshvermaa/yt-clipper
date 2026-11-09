@@ -5,7 +5,7 @@ import subprocess
 import time
 from pathlib import Path
 
-from . import config, render, review
+from . import config, render, review, thumbnail
 
 OUT = config.WORKSPACE / "compilations"
 FONT = r"C\:/Windows/Fonts/arialbd.ttf"  # shortcut: Windows-only font path, swap for fonts/ if run elsewhere
@@ -110,7 +110,8 @@ def build(days=7):
     if got < t - 5:
         raise RuntimeError(f"compilation is {got:.0f}s, segments add up to {t:.0f}s")
     review.sheet(final, OUT / f"{name}.sheet.jpg")
-    info = {"file": str(final), "status": "review", "used": [k for k, _, _ in chosen],
+    thumbs = thumbnail.make([(m["source"], c["start"], c["end"]) for _, m, c in chosen[:6]], OUT / f"{name}.thumb.jpg")
+    info = {"file": str(final), "thumbs": thumbs, "thumb": thumbs[0], "status": "review", "used": [k for k, _, _ in chosen],
             "title": f"GTA 6 - ALL New Info This Week ({dt.date.today():%b. %d})",
             "description": "The biggest GTA 6 news, leaks and details from this week, from the creators below.\n\n"
                            "Chapters:\n" + "\n".join(chapters),
@@ -129,5 +130,28 @@ def upload_ready():
         meta = {"url": "", "channel": "various creators (see chapters)", "channel_url": ""}
         info["youtube_id"] = upload.upload(info["file"], meta, info, shorts=False)
         info["status"] = "uploaded"
+        if info.get("thumb"):
+            info["thumb_set"] = upload.set_thumbnail(info["youtube_id"], info["thumb"])
         j.write_text(json.dumps(info, indent=2, ensure_ascii=False), encoding="utf-8")
         print(f"  uploaded https://youtube.com/watch?v={info['youtube_id']}")
+
+
+def set_thumb(name, pick=1):
+    """(Re)make and apply the thumbnail of an already uploaded compilation, e.g. after verifying the channel."""
+    from . import upload
+    j = OUT / f"{name}.json"
+    info = json.loads(j.read_text(encoding="utf-8"))
+    if not info.get("youtube_id"):
+        raise SystemExit(f"{name} is not uploaded yet")
+    spans = []
+    for key in info["used"][:6]:
+        vid, n = key.split("#")
+        meta = json.loads((config.WORKSPACE / vid / "meta.json").read_text(encoding="utf-8"))
+        clips = json.loads((config.WORKSPACE / vid / "clips.json").read_text(encoding="utf-8"))
+        c = next(c for c in clips if c["n"] == int(n))
+        spans.append((meta["source"], c["start"], c["end"]))
+    info["thumbs"] = thumbnail.make(spans, OUT / f"{name}.thumb.jpg")
+    info["thumb"] = info["thumbs"][min(pick, len(info["thumbs"])) - 1]
+    info["thumb_set"] = upload.set_thumbnail(info["youtube_id"], info["thumb"])
+    j.write_text(json.dumps(info, indent=2, ensure_ascii=False), encoding="utf-8")
+    return info

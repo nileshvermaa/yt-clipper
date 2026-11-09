@@ -308,6 +308,8 @@ def main():
     f = sub.add_parser("finish", help="no-API mode: picks.json -> render"); f.add_argument("--upload", action="store_true")
     cp = sub.add_parser("compile", help="weekly 16:9 compilation from approved clips")
     cp.add_argument("--days", type=int, default=7); cp.add_argument("--approve", metavar="DATE")
+    cp.add_argument("--thumb", metavar="DATE", help="make + set the custom thumbnail of an uploaded compilation")
+    cp.add_argument("--pick", type=int, default=1, help="which candidate thumbnail (1-3) to use")
     cp.add_argument("--upload", action="store_true", help="upload approved compilations")
     sub.add_parser("review", help="contact sheets for clips waiting for approval")
     for name in ("approve", "reject"):
@@ -332,9 +334,14 @@ def main():
     if a.cmd == "compile":
         from . import compile as comp
         from . import render; render.check_ffmpeg()
-        if a.approve:
+        if a.thumb:
+            info = comp.set_thumb(a.thumb, a.pick)
+            print(f"  thumbnail {'set' if info['thumb_set'] else 'made, not set'}: {info['thumb']}")
+        elif a.approve:
             j = comp.OUT / f"{a.approve}.json"
             info = json.loads(j.read_text(encoding="utf-8")); info["status"] = "approved"
+            if info.get("thumbs"):
+                info["thumb"] = info["thumbs"][min(a.pick, len(info["thumbs"])) - 1]
             j.write_text(json.dumps(info, indent=2, ensure_ascii=False), encoding="utf-8"); print(f"  {j.name} approved")
         elif a.upload:
             comp.upload_ready()

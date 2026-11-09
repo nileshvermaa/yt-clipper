@@ -179,3 +179,13 @@ One-time setup:
 1. Google Cloud console > APIs & Services > Library: enable **YouTube Analytics API** (Data API v3 is already on).
 2. OAuth consent screen > Data access: add scopes `youtube.readonly` and `yt-analytics.readonly`.
 3. Run `python -m clipper auth` again and accept. Uploads keep working with the old token until you do.
+
+## Custom thumbnails (weekly compilation)
+
+`compile` also writes three candidate thumbnails, `workspace/compilations/<date>.thumb.1-3.jpg`: the best frames
+from different segments (colourful, a big person or vehicle in frame, no text cards), with "GTA 6 / ALL NEW
+INFO / THIS WEEK" in bold Impact. Choose one when approving: `compile --approve <date> --pick 2`; it is set right
+after upload. To set or change it on an already uploaded video: `compile --thumb <date> --pick <n>` (50 quota units).
+
+Custom thumbnails need a phone-verified channel: https://www.youtube.com/verify. Shorts thumbnails cannot be set
+through the API; pick a frame in the YouTube mobile app instead.

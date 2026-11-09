@@ -116,3 +116,19 @@ def upload(file_path, meta, clip, publish_at=None, shorts=True):
     s["last_upload"] = dt.datetime.utcnow().isoformat()
     save_state(s)
     return resp["id"]
+
+
+def set_thumbnail(video_id, image_path):
+    """Custom thumbnail (50 quota units). Needs a phone-verified channel: youtube.com/verify."""
+    from googleapiclient.errors import HttpError
+    from googleapiclient.http import MediaFileUpload
+    try:
+        _service().thumbnails().set(videoId=video_id,
+                                    media_body=MediaFileUpload(str(image_path), mimetype="image/jpeg")).execute()
+        return True
+    except HttpError as e:
+        if e.resp.status == 403:
+            print("  thumbnail refused: verify the channel at https://www.youtube.com/verify, then run "
+                  "`python -m clipper compile --thumb <date> --pick <n>`")
+            return False
+        raise
