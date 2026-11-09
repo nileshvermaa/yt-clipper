@@ -128,7 +128,8 @@ def set_thumbnail(video_id, image_path):
         return True
     except HttpError as e:
         if e.resp.status == 403:
-            print("  thumbnail refused: verify the channel at https://www.youtube.com/verify, then run "
-                  "`python -m clipper compile --thumb <date> --pick <n>`")
+            print("  thumbnail refused: YouTube has not enabled custom thumbnails for this channel yet "
+                  "(check https://www.youtube.com/features; after phone verification it can take up to 24 h), "
+                  "then run `python -m clipper compile --thumb <date> --pick <n>`")
             return False
         raise
