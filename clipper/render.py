@@ -37,6 +37,11 @@ def render(meta, segments, clip):
     return render_segment(meta, cdir, clip["start"], clip["end"], tag=f"clip{clip['n']}", on_layout=build_captions)
 
 
+def _best_height(meta):
+    s = download.stream_inputs(meta, "vp09") or download.stream_inputs(meta, "av01")
+    return s["height"] if s else 1080
+
+
 def source_fps(meta):
     """Frame rate the render will use for this video (before the OUT_FPS cap)."""
     stream = download.stream_inputs(meta, "vp09") or download.stream_inputs(meta, "av01")
@@ -55,7 +60,8 @@ def render_segment(meta, cdir, start, end, tag="segment", out_fps=None, on_layou
     layout = reframe.detect_reaction(local, start, end, frames, (fw_, fh_))  # facecam + screen recording?
     if layout:
         crop_w, path, W, used = None, None, layout["W"], "reaction"
-    elif framing == "blur":
+    elif framing == "blur" or _best_height(meta) < config.MIN_CROP_HEIGHT:
+        # low-res source: show the whole frame at native sharpness instead of an upscaled crop
         crop_w, path, W, used = None, None, None, "blur"
     else:
         crop_w, path, W, used = reframe.crop_path(local, start, end, framing, frames, (fw_, fh_))

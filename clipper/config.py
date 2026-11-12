@@ -67,6 +67,8 @@ NO_HEATMAP_MAX_MIN = float(_env("NO_HEATMAP_MAX_MIN", "30"))
 # Render
 OUT_W, OUT_H = 1080, 1920
 MAX_SOURCE_HEIGHT = int(_env("MAX_SOURCE_HEIGHT", "2160"))  # per-clip hi-res re-download (0 = off)
+MIN_CROP_HEIGHT = int(_env("MIN_CROP_HEIGHT", "1440"))  # sources below this are not cropped to 9:16 (too soft)
+PREPARE_MAX_VIDEOS = int(_env("PREPARE_MAX_VIDEOS", "2"))  # new videos per prepare run (2 x 3 clips covers 4 Shorts/day)
 OUT_FPS = _env("OUT_FPS", "auto")  # auto = keep source fps up to 60; or a number
 FRAMING = _env("FRAMING", "auto")  # auto | face | center | blur  (see reframe.py)
 CAPTION_FONT = _env("CAPTION_FONT", "Montserrat ExtraBold")

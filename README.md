@@ -48,6 +48,8 @@ winget install Gyan.FFmpeg
 .venv\Scripts\python -m clipper auth          # one-time YouTube login, see SETUP.md
 ```
 
+Editing standards and troubleshooting: **[docs/PLAYBOOK.md](docs/PLAYBOOK.md)**. Scheduled-task prompts: [`docs/tasks/`](docs/tasks).
+
 Full setup (Google Cloud OAuth, consent screen, scheduled task, tuning): **[SETUP.md](SETUP.md)**.
 
 ## Commands

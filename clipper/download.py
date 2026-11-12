@@ -149,3 +149,31 @@ def latest_videos(channel_url, limit=5):
             continue
         out.append(f"https://www.youtube.com/watch?v={e['id']}")
     return out[:limit]
+
+
+def trends(query="GTA 6", n=40, top=12):
+    """This week's uploads for a search, most-viewed first = what is trending right now."""
+    from urllib.parse import quote_plus
+    # sp=CAMSBAgDEAE: YouTube's own filter "uploaded this week, videos only, sorted by view count"
+    url = f"https://www.youtube.com/results?search_query={quote_plus(query)}&sp=CAMSBAgDEAE"
+    opts = _base_opts() | {"extract_flat": True, "playlistend": n}
+    with yt_dlp.YoutubeDL(opts) as ydl:
+        entries = ydl.extract_info(url, download=False).get("entries", [])
+    rows = [(e.get("view_count") or 0, int(e.get("duration") or 0), e.get("title") or "", e.get("channel") or "",
+             f"https://www.youtube.com/watch?v={e['id']}") for e in entries
+            if e.get("id") and 180 <= (e.get("duration") or 0) <= 2400]  # skip Shorts and streams
+    return sorted(rows, reverse=True)[:top]
+
+
+def fetch_range(video_id, start, end):
+    """Best-quality copy (up to 4K, 8-bit) of [start, end] for B-roll; cached. Cuts land on keyframes."""
+    out = config.WORKSPACE / video_id / f"hq_{int(start)}_{int(end)}.mp4"
+    if out.exists():
+        return out
+    fmt = "bv*[height<=2160][vcodec^=vp09.00]+ba/bv*[height<=2160][vcodec^=avc1]+ba/bv*[height<=2160]+ba/b"
+    opts = _base_opts() | {"format": fmt, "outtmpl": str(out.with_suffix("")) + ".%(ext)s",
+                           "merge_output_format": "mp4",
+                           "download_ranges": yt_dlp.utils.download_range_func(None, [(start, end)])}
+    with yt_dlp.YoutubeDL(opts) as ydl:
+        ydl.download([f"https://www.youtube.com/watch?v={video_id}"])
+    return out

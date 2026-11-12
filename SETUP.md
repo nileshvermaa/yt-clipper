@@ -208,3 +208,20 @@ Script format (Claude writes it in the app from the source transcripts; narratio
  "description": "...", "tags": ["..."], "sources": ["<video id whose reporting is used>"],
  "sections": [{"heading": "...", "text": "narration", "broll": [["<video id>", start_sec, end_sec]]}]}
 ```
+
+## Daily schedule and quality rules
+
+| When | Task | What |
+|---|---|---|
+| 9:00 daily | GTA 6 daily production | analytics, up to 2 new videos -> Shorts picked, rendered, reviewed; `trends` -> script -> narrated video built. No uploads. |
+| 13:00 daily | GTA 6 daily upload | `upload-pending` (4 Shorts) + today's narrated video with its thumbnail |
+| Sun 16:00 | GTA 6 weekly compilation | weekly 16:9 compilation |
+
+Quality rules now built in:
+- The copy saved on disk is only ~1.3-2.9 Mbps 1080p and is used for analysis only. Explainer B-roll is fetched
+  per range in the best 8-bit stream (up to 4K, `download.fetch_range`, cached as `hq_*.mp4`).
+- Shorts from sources below `MIN_CROP_HEIGHT` (1440) are not cropped to 9:16 (a 608 px wide crop looks soft); the
+  whole frame is shown sharp over a blurred backdrop instead.
+- Voice-over is synthesized sentence by sentence (long passages made Kokoro garble a section).
+- `python -m clipper trends [query]`: this week's most-viewed videos for a search, for topic picking.
+- `PREPARE_MAX_VIDEOS` (2) caps new downloads per run to keep the PC load low.

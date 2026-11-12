@@ -46,3 +46,14 @@ def test_summarize_insights():
     assert "Best source channels: A" in text
     assert "t9 (900)" in text.split("Titles that worked:")[1]
     assert "% watched" in text
+
+
+def test_explainer_validate():
+    from clipper import explainer
+    sec = {"heading": "A heading", "text": "word " * 90, "broll": [["nope", 0, 10]]}
+    bad = explainer.validate({"title": "A fine title", "sections": [sec] * 6})
+    assert any("not prepared" in b for b in bad)
+    assert not any("sections" in b or "words of narration" in b for b in bad)
+    assert any("spell numbers" in b for b in explainer.validate(
+        {"title": "A fine title", "sections": [sec | {"text": "it runs at 30 fps " * 20}] * 6}))
+    assert any("sections; use" in b for b in explainer.validate({"title": "x", "sections": []}))

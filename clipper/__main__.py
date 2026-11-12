@@ -301,6 +301,8 @@ def main():
     w = sub.add_parser("watch"); w.add_argument("--upload", action="store_true")
     sub.add_parser("upload-pending")
     sub.add_parser("status")
+    tr = sub.add_parser("trends", help="newest GTA 6 videos on YouTube ranked by views (topic ideas)")
+    tr.add_argument("query", nargs="?", default="GTA 6")
     sub.add_parser("stats", help="pull views/retention of uploaded videos and refresh insights.txt")
     pr = sub.add_parser("prepare", help="no-API mode: download+transcribe, write candidates.txt")
     pr.add_argument("urls", nargs="*", help="video URLs; omit to use new videos from channels.txt")
@@ -379,7 +381,7 @@ def main():
         # (the transcript is already saved), so a retry just picks up from the cache.
         import subprocess
         import sys
-        for url in a.urls or list(new_channel_videos()):
+        for url in a.urls or list(new_channel_videos())[:config.PREPARE_MAX_VIDEOS]:
             for attempt in range(2):
                 proc = subprocess.Popen([sys.executable, "-u", "-m", "clipper", "prepare", url])
                 try:
@@ -414,6 +416,10 @@ def main():
         cmd_upload_pending()
     elif a.cmd == "status":
         cmd_status()
+    elif a.cmd == "trends":
+        from . import download
+        for views, dur, title, channel, url in download.trends(a.query):
+            print(f"{views:>9,}  {dur // 60:>2}m  {title[:70]}  | {channel}  {url}")
     elif a.cmd == "stats":
         from . import analytics
         print(f"  updated stats for {analytics.fetch()} videos")

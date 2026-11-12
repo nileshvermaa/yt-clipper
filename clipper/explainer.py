@@ -7,6 +7,7 @@ Branding is overlaid in the same ffmpeg pass: title card on the first 3.5 s, sli
 channel bug, footage credit and a subscribe card at the end. NVDEC/NVENC do the heavy lifting.
 """
 import json
+import re
 import subprocess
 import wave
 from pathlib import Path
@@ -34,12 +35,26 @@ def _channel_name():
     return json.loads(cache.read_text(encoding="utf-8"))["title"]
 
 
+_KOKORO = []
+
+
 def _tts(text, out):
     transcribe._add_cuda_dlls()
     from kokoro_onnx import Kokoro
-    k = Kokoro(str(config.ROOT / "models/tts/kokoro-v1.0.onnx"), str(config.ROOT / "models/tts/voices-v1.0.bin"))
-    samples, sr = k.create(text, voice=VOICE, speed=1.05, lang="en-us")
-    pcm = np.concatenate([samples, np.zeros(int(sr * 0.35))])  # breath between sections
+    if not _KOKORO:  # load the 325 MB model once per run, not once per section
+        _KOKORO.append(Kokoro(str(config.ROOT / "models/tts/kokoro-v1.0.onnx"),
+                              str(config.ROOT / "models/tts/voices-v1.0.bin")))
+    k = _KOKORO[0]
+    # one sentence per call: long passages overflow Kokoro's context and come out garbled
+    chunks, sr = [], 24000
+    for sentence in re.split(r"(?<=[.!?])\s+", text.strip()):
+        samples, sr = k.create(sentence, voice=VOICE, speed=1.05, lang="en-us")
+        chunks += [samples, np.zeros(int(sr * 0.18))]
+    pcm = np.concatenate(chunks + [np.zeros(int(sr * 0.35))])  # breath between sections
+    rate = len(text.split()) / (len(pcm) / sr)
+    # shortcut: speaking-rate check only (normal is 2.4-3.4 words/s); a Whisper read-back would catch more
+    if not 1.8 <= rate <= 4.2:
+        raise RuntimeError(f"voice-over looks garbled ({rate:.1f} words/s) for: {text[:60]}...")
     with wave.open(str(out), "wb") as w:
         w.setnchannels(1)
         w.setsampwidth(2)
@@ -49,13 +64,19 @@ def _tts(text, out):
 
 
 def _shots(broll, need):
-    """5 s windows from the given ranges, skipping text cards/black frames, cycled until `need` seconds."""
+    """5 s windows from hi-res copies of the given ranges, skipping text cards/faces, cycled to `need` s."""
+    from . import download
     good = []
     for vid, start, end in broll:
-        src = config.WORKSPACE / vid / "source.mp4"
+        try:
+            src, t, stop = download.fetch_range(vid, start, end), 0.0, None
+        except Exception as e:  # network/bot check: the low-bitrate local copy still makes a video
+            print(f"  hi-res B-roll failed for {vid} ({str(e)[:60]}); using the local copy")
+            src, t, stop = config.WORKSPACE / vid / "source.mp4", float(start), float(end)
         cap = cv2.VideoCapture(str(src))
-        t = float(start)
-        while t + SHOT <= end:
+        if stop is None:
+            stop = cap.get(cv2.CAP_PROP_FRAME_COUNT) / (cap.get(cv2.CAP_PROP_FPS) or 30)
+        while t + SHOT <= stop:
             cap.set(cv2.CAP_PROP_POS_MSEC, 1000 * (t + SHOT / 2))
             ok, img = cap.read()
             if ok and thumbnail._score(cv2.resize(img, (thumbnail.W, thumbnail.H))) > 0:
@@ -128,9 +149,44 @@ def _section(n, sec, total, work, brand, intro_title):
     return out, dur
 
 
+def validate(s):
+    """Problems in a script, as plain sentences the script writer can act on (empty list = good)."""
+    bad = []
+    secs = s.get("sections") or []
+    if not 5 <= len(secs) <= 9:
+        bad.append(f"{len(secs)} sections; use 5-9")
+    words = sum(len(sec.get("text", "").split()) for sec in secs)
+    if not 450 <= words <= 900:
+        bad.append(f"{words} words of narration; use 450-900 (about 3-6 minutes)")
+    if not 5 <= len(s.get("title", "")) <= 60:
+        bad.append("title must be 5-60 characters")
+    for n, sec in enumerate(secs, 1):
+        if not 3 <= len(sec.get("heading", "")) <= 40:
+            bad.append(f"section {n}: heading must be 3-40 characters")
+        if len(sec.get("text", "").split()) < 25:
+            bad.append(f"section {n}: narration under 25 words")
+        if re.search(r"\d", sec.get("text", "")):
+            bad.append(f"section {n}: spell numbers as words in the narration (the voice reads digits badly)")
+        if not sec.get("broll"):
+            bad.append(f"section {n}: no broll")
+        for item in sec.get("broll", []):
+            if len(item) != 3:
+                bad.append(f"section {n}: broll entries are [video_id, start_sec, end_sec]")
+                continue
+            vid, a, b = item
+            if not (config.WORKSPACE / str(vid) / "source.mp4").exists():
+                bad.append(f"section {n}: video {vid} is not prepared (run: python -m clipper prepare <url>)")
+            elif b - a < 30:
+                bad.append(f"section {n}: broll range {a}-{b} is under 30 seconds")
+    return bad
+
+
 def build(script_path):
     script_path = Path(script_path)
     s = json.loads(script_path.read_text(encoding="utf-8"))
+    bad = validate(s)
+    if bad:
+        raise SystemExit("script problems:\n  - " + "\n  - ".join(bad))
     work = OUT / script_path.stem
     work.mkdir(parents=True, exist_ok=True)
     brand = _channel_name()
@@ -146,6 +202,10 @@ def build(script_path):
     subprocess.run(["ffmpeg", "-y", "-v", "error", "-f", "concat", "-safe", "0", "-i", "list.txt", "-c", "copy",
                     "-movflags", "+faststart", str(final.resolve())], check=True, cwd=work)
     from . import review
+    got = float(subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0",
+                                str(final)], capture_output=True, text=True).stdout or 0)
+    if abs(got - t) > 3:
+        raise RuntimeError(f"final video is {got:.0f}s but the narration is {t:.0f}s")
     review.sheet(final, work / "final.sheet.jpg")
     vids = sorted({v for sec in s["sections"] for v, _, _ in sec["broll"]} | set(s.get("sources", [])))
     metas = [json.loads((config.WORKSPACE / v / "meta.json").read_text(encoding="utf-8")) for v in vids]
