@@ -7,6 +7,17 @@ W, H = 1280, 720
 IMPACT = r"C:\Windows\Fonts\impact.ttf"  # shortcut: Windows font path, ship a font in fonts/ to run elsewhere
 
 
+_FACE = []
+
+
+def _faces(img, min_share=0.015):
+    """True if a real-size face (>= 1.5% of the frame) is in shot; YuNet runs on CPU at 320 px, ~5 ms."""
+    from . import reframe
+    if not _FACE:
+        _FACE.append(reframe._detector())
+    return any(area >= min_share * img.shape[0] * img.shape[1] for _, area in _FACE[0](img))
+
+
 def _score(img):
     """Colourful game footage with a big person or vehicle wins; text cards and screenshots lose."""
     from . import subject
@@ -15,6 +26,8 @@ def _score(img):
     flat = (cv2.Laplacian(gray, cv2.CV_64F) == 0).mean()  # share of perfectly flat pixels: UI cards, tweets
     white = (gray > 225).mean()
     if bright < 40 or bright > 210 or white > 0.2 or flat > 0.5:
+        return 0
+    if _faces(img):  # a creator's webcam is not our footage (also drops some in-game close-ups)
         return 0
     b, g, r = cv2.split(img.astype("float"))
     rg, yb = np.abs(r - g), np.abs(0.5 * (r + g) - b)
@@ -75,7 +88,7 @@ def compose(frame, out, headline="ALL NEW INFO", top="GTA 6", badge="THIS WEEK")
     d = ImageDraw.Draw(img)
     box = _text(d, (48, 70), top, 150, "white")
     words = headline.split()
-    mid = max(1, len(words) // 2)
+    mid = max(1, (len(words) + 1) // 2)
     y = box[3] + 10
     for line in (" ".join(words[:mid]), " ".join(words[mid:])):
         if line:

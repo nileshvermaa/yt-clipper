@@ -13,3 +13,7 @@ python-dotenv>=1.0
 google-api-python-client>=2.130
 google-auth-oauthlib>=1.2
 google-auth>=2.30
+
+# narrated explainers (Kokoro TTS). Install WITHOUT deps so the pinned onnxruntime-gpu 1.19.2 stays:
+#   pip install --no-deps kokoro-onnx==0.6.1 espeakng-loader phonemizer-fork
+#   pip install colorlog dlinfo joblib segments

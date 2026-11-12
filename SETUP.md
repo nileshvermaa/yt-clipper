@@ -189,3 +189,22 @@ after upload. To set or change it on an already uploaded video: `compile --thumb
 
 Custom thumbnails need a phone-verified channel: https://www.youtube.com/verify. Shorts thumbnails cannot be set
 through the API; pick a frame in the YouTube mobile app instead.
+
+
+## Narrated explainer videos (your own voice-over style)
+
+`python -m clipper explain workspace/explainers/<name>.json` renders a 16:9 1440p video from a script:
+a Kokoro TTS voice-over (local, free, voice `am_michael` every time for a consistent channel sound), B-roll cut
+from the downloaded source videos into 5 s shots (text cards, black frames and creators' webcam faces are skipped
+automatically), and the channel branding: animated "GTA 6" title card, sliding yellow section headings with a red
+bar, the channel name top-right, a footage credit bottom-right, and a "SUBSCRIBE" card at the end. Output:
+`workspace/explainers/<name>/final.mp4`, a contact sheet and 3 candidate thumbnails. Upload after review with
+`--upload --pick N` (Private, chapters + source credits in the description, custom thumbnail).
+
+Script format (Claude writes it in the app from the source transcripts; narration in its own words):
+
+```json
+{"title": "...", "thumb": {"top": "GTA 6", "headline": "30 FPS ONLY!?", "badge": "BEFORE LAUNCH"},
+ "description": "...", "tags": ["..."], "sources": ["<video id whose reporting is used>"],
+ "sections": [{"heading": "...", "text": "narration", "broll": [["<video id>", start_sec, end_sec]]}]}
+```

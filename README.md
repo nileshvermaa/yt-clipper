@@ -60,6 +60,7 @@ Full setup (Google Cloud OAuth, consent screen, scheduled task, tuning): **[SETU
 | `python -m clipper review` / `approve` / `reject` | quality gate before upload |
 | `python -m clipper upload-pending` | upload approved clips (paced, quota-aware) |
 | `python -m clipper compile [--approve DATE] [--upload]` | weekly 16:9 compilation |
+| `python -m clipper explain script.json [--upload --pick N]` | narrated, branded explainer video (Kokoro voice) |
 | `python -m clipper versus --a URL S E --b URL S E` | "GTA V vs GTA VI" back-to-back Short |
 | `python -m clipper run <url>` | one-shot with the Anthropic API (needs `ANTHROPIC_API_KEY`) |
 | `python -m clipper status` | clips per video and today's upload count |

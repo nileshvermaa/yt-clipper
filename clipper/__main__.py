@@ -268,7 +268,7 @@ def cmd_versus(a):
     print(f"  uploaded https://youtube.com/shorts/{vid}")
 
 
-LOCK_CMDS = {"run", "watch", "prepare", "finish", "upload-pending", "compile"}
+LOCK_CMDS = {"run", "watch", "prepare", "finish", "upload-pending", "compile", "explain"}
 PREPARE_TIMEOUT_SEC = 3600  # one video: download + Whisper; a stuck child is killed after this
 
 
@@ -311,6 +311,9 @@ def main():
     cp.add_argument("--thumb", metavar="DATE", help="make + set the custom thumbnail of an uploaded compilation")
     cp.add_argument("--pick", type=int, default=1, help="which candidate thumbnail (1-3) to use")
     cp.add_argument("--upload", action="store_true", help="upload approved compilations")
+    ex = sub.add_parser("explain", help="narrated explainer video from a script.json")
+    ex.add_argument("script"); ex.add_argument("--upload", action="store_true")
+    ex.add_argument("--pick", type=int, default=1, help="which candidate thumbnail (1-3)")
     sub.add_parser("review", help="contact sheets for clips waiting for approval")
     for name in ("approve", "reject"):
         ap = sub.add_parser(name); ap.add_argument("video"); ap.add_argument("n", nargs="*", type=int)
@@ -349,6 +352,17 @@ def main():
             j, info, t = comp.build(a.days)
             print(f"  {len(info['used'])} segments, {t / 60:.1f} min -> {info['file']}")
             print(f"  sheet: {j.with_suffix('.sheet.jpg')}")
+        return
+    if a.cmd == "explain":
+        from . import explainer, render
+        render.check_ffmpeg()
+        if a.upload:
+            info = explainer.upload_it(a.script, a.pick)
+            print(f"  uploaded https://youtube.com/watch?v={info['youtube_id']}  thumbnail set: {info['thumb_set']}")
+        else:
+            work, info, t = explainer.build(a.script)
+            print(f"  {t / 60:.1f} min -> {info['file']}")
+            print(f"  review: {work / 'final.sheet.jpg'} and thumbnails {', '.join(info['thumbs'])}")
         return
     if a.cmd == "review":
         cmd_review()
