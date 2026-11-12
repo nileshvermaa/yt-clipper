@@ -268,7 +268,7 @@ def cmd_versus(a):
     print(f"  uploaded https://youtube.com/shorts/{vid}")
 
 
-LOCK_CMDS = {"run", "watch", "prepare", "finish", "upload-pending", "compile", "explain"}
+LOCK_CMDS = {"run", "watch", "prepare", "finish", "upload-pending", "compile", "explain", "library"}
 PREPARE_TIMEOUT_SEC = 3600  # one video: download + Whisper; a stuck child is killed after this
 
 
@@ -301,6 +301,7 @@ def main():
     w = sub.add_parser("watch"); w.add_argument("--upload", action="store_true")
     sub.add_parser("upload-pending")
     sub.add_parser("status")
+    sub.add_parser("library", help="prepare Rockstar's official GTA VI videos as clean B-roll sources")
     tr = sub.add_parser("trends", help="newest GTA 6 videos on YouTube ranked by views (topic ideas)")
     tr.add_argument("query", nargs="?", default="GTA 6")
     sub.add_parser("stats", help="pull views/retention of uploaded videos and refresh insights.txt")
@@ -416,10 +417,19 @@ def main():
         cmd_upload_pending()
     elif a.cmd == "status":
         cmd_status()
+    elif a.cmd == "library":
+        from . import download
+        for v in download.build_library():
+            print(f"  {v['id']}  {v['duration'] // 60}m{v['duration'] % 60:02d}s  {v['title']}")
     elif a.cmd == "trends":
         from . import download
+        print("Most-viewed uploads this week:")
         for views, dur, title, channel, url in download.trends(a.query):
             print(f"{views:>9,}  {dur // 60:>2}m  {title[:70]}  | {channel}  {url}")
+        print("\nWhat people search on YouTube now: " + ", ".join(download.suggestions(a.query.lower() + " ")))
+        print("\nNewest official Rockstar uploads:")
+        for vid, dur, title in download.official_videos()[:5]:
+            print(f"  {dur // 60:>2}m{dur % 60:02d}s  {title}  https://www.youtube.com/watch?v={vid}")
     elif a.cmd == "stats":
         from . import analytics
         print(f"  updated stats for {analytics.fetch()} videos")

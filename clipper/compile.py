@@ -53,6 +53,7 @@ def _segment(meta, c, out, txt):
            ":box=1:boxcolor=black@0.55:boxborderw=18")
     seek = ["-ss", f"{c['start']:.2f}", "-to", f"{c['end']:.2f}"]
     s = download.stream_inputs(meta, "vp09")
+    sharp = "" if s and s["height"] >= 1440 else "cas=0.35,"  # light sharpening when upscaling 1080p
     if s and s["height"] > 1080:  # sharper than the 1080p file on disk; ffmpeg only fetches these seconds
         net = ["-reconnect", "1", "-reconnect_streamed", "1", "-reconnect_on_network_error", "1"]
         ins = net + ["-headers", s["v_hdr"]] + seek + ["-i", s["v"]] + net + ["-headers", s["a_hdr"]] + seek + ["-i", s["a"]]
@@ -62,7 +63,7 @@ def _segment(meta, c, out, txt):
     if render._has_nvenc():
         hw = ["-hwaccel", "cuda", "-hwaccel_output_format", "cuda"]
         vf = (f"scale_cuda={W}:{H}:interp_algo=lanczos:force_original_aspect_ratio=decrease,hwdownload,format=nv12,"
-              f"pad={W}:{H}:(ow-iw)/2:(oh-ih)/2,fps=30,{bar}")
+              f"pad={W}:{H}:(ow-iw)/2:(oh-ih)/2,fps=30,{sharp}{bar}")
         venc = ["-c:v", "h264_nvenc", "-preset", "p6", "-tune", "hq", "-rc", "vbr", "-cq", "19", "-b:v", "0",
                 "-maxrate", "40M", "-bufsize", "80M", "-profile:v", "high"]
     else:

@@ -22,6 +22,8 @@ W, H = comp.W, comp.H
 IMPACT = r"C\:/Windows/Fonts/impact.ttf"  # shortcut: Windows font paths, ship fonts/ to run elsewhere
 ARIAL = r"C\:/Windows/Fonts/arialbd.ttf"
 YELLOW, RED = "0xFFE000", "0xE10600"
+MUSIC_EXT = {".mp3", ".m4a", ".wav", ".ogg", ".flac"}
+MUSIC_VOLUME = 0.09  # about -21 dB under the voice
 SHOT = 5.0  # seconds per B-roll cut; quick cuts keep commentary videos moving
 VOICE = "am_michael"  # Kokoro voice; same voice every video = consistent channel sound
 
@@ -46,9 +48,11 @@ def _tts(text, out):
                               str(config.ROOT / "models/tts/voices-v1.0.bin")))
     k = _KOKORO[0]
     # one sentence per call: long passages overflow Kokoro's context and come out garbled
-    chunks, sr = [], 24000
+    chunks, sr, cues, t = [], 24000, [], 0.0
     for sentence in re.split(r"(?<=[.!?])\s+", text.strip()):
         samples, sr = k.create(sentence, voice=VOICE, speed=1.05, lang="en-us")
+        cues.append((t, t + len(samples) / sr, sentence))
+        t += len(samples) / sr + 0.18
         chunks += [samples, np.zeros(int(sr * 0.18))]
     pcm = np.concatenate(chunks + [np.zeros(int(sr * 0.35))])  # breath between sections
     rate = len(text.split()) / (len(pcm) / sr)
@@ -60,14 +64,47 @@ def _tts(text, out):
         w.setsampwidth(2)
         w.setframerate(sr)
         w.writeframes((np.clip(pcm, -1, 1) * 32767).astype("<i2").tobytes())
-    return len(pcm) / sr
+    return len(pcm) / sr, cues
+
+
+def _ass_time(t):
+    return f"{int(t // 3600)}:{int(t % 3600 // 60):02d}:{t % 60:05.2f}"
+
+
+def _captions(cues, out, words_per=5):
+    """Burned-in captions: each spoken sentence in chunks of <= 5 words, timed by share of characters."""
+    head = ("[Script Info]\nScriptType: v4.00+\nPlayResX: 2560\nPlayResY: 1440\n\n[V4+ Styles]\n"
+            "Format: Name, Fontname, Fontsize, PrimaryColour, OutlineColour, BackColour, Bold, BorderStyle, Outline, "
+            "Shadow, Alignment, MarginL, MarginR, MarginV\n"
+            "Style: Cap,Arial,66,&H00FFFFFF,&H00000000,&H96000000,-1,1,5,2,2,200,200,130\n\n[Events]\n"
+            "Format: Layer, Start, End, Style, Text\n")
+    lines = []
+    for t0, t1, sentence in cues:
+        w = sentence.split()
+        parts = [" ".join(w[i:i + words_per]) for i in range(0, len(w), words_per)]
+        total, t = sum(len(p) for p in parts) or 1, t0
+        for p in parts:
+            d = (t1 - t0) * len(p) / total
+            lines.append(f"Dialogue: 0,{_ass_time(t)},{_ass_time(t + d)},Cap,{p}")
+            t += d
+    Path(out).write_text(head + "\n".join(lines) + "\n", encoding="utf-8")
+
+
+def library():
+    """Official Rockstar videos prepared by `clipper library`: clean 4K footage, safe default B-roll."""
+    f = config.WORKSPACE / "library.json"
+    return json.loads(f.read_text(encoding="utf-8")) if f.exists() else []
 
 
 def _shots(broll, need):
     """5 s windows from hi-res copies of the given ranges, skipping text cards/faces, cycled to `need` s."""
     from . import download
-    good = []
+    good, low = [], False
+    official = {v["id"] for v in library()}  # game characters' faces are fine; only creators' webcams are not
     for vid, start, end in broll:
+        if vid in official:  # trailers open with a rating card and end on logo cards
+            dur = next(v["duration"] for v in library() if v["id"] == vid)
+            start, end = max(start, 7), min(end, dur - 9)
         try:
             src, t, stop = download.fetch_range(vid, start, end), 0.0, None
         except Exception as e:  # network/bot check: the low-bitrate local copy still makes a video
@@ -76,10 +113,11 @@ def _shots(broll, need):
         cap = cv2.VideoCapture(str(src))
         if stop is None:
             stop = cap.get(cv2.CAP_PROP_FRAME_COUNT) / (cap.get(cv2.CAP_PROP_FPS) or 30)
+        low = low or cap.get(cv2.CAP_PROP_FRAME_HEIGHT) < 1440
         while t + SHOT <= stop:
             cap.set(cv2.CAP_PROP_POS_MSEC, 1000 * (t + SHOT / 2))
             ok, img = cap.read()
-            if ok and thumbnail._score(cv2.resize(img, (thumbnail.W, thumbnail.H))) > 0:
+            if ok and thumbnail._score(cv2.resize(img, (thumbnail.W, thumbnail.H)), faces=vid not in official) > 0:
                 good.append((src, t))
             t += SHOT
         cap.release()
@@ -89,7 +127,22 @@ def _shots(broll, need):
     while len(shots) * SHOT < need + SHOT:
         shots.append(good[i % len(good)])
         i += 1
-    return shots
+    return shots, low
+
+
+def _shots_or_library(n, sec, need):
+    """Section B-roll; if none of it is usable, a slice of official Rockstar footage instead."""
+    try:
+        return _shots(sec["broll"], need) + (sec["broll"],)
+    except RuntimeError:
+        lib = [v for v in library() if v["duration"] >= 150]
+        if not lib:
+            raise
+        v = max(lib, key=lambda v: v["duration"])
+        start = (n * 137) % int(v["duration"] - 130)
+        print(f"  section {n}: no usable B-roll, using official footage {v['id']} {start}-{start + 120}s")
+        broll = [[v["id"], start, start + 120]]
+        return _shots(broll, need) + (broll,)
 
 
 def _esc(path):
@@ -98,14 +151,15 @@ def _esc(path):
 
 def _section(n, sec, total, work, brand, intro_title):
     wav = work / f"{n:02d}.wav"
-    dur = _tts(sec["text"], wav)
-    shots = _shots(sec["broll"], dur)
+    dur, cues = _tts(sec["text"], wav)
+    _captions(cues, work / f"{n:02d}.ass")
+    shots, low, broll = _shots_or_library(n, sec, dur)
     lst = work / f"{n:02d}.txt"
     lst.write_text("".join(f"file '{Path(s).as_posix()}'\ninpoint {t:.2f}\noutpoint {t + SHOT:.2f}\n" for s, t in shots),
                    encoding="utf-8")
     texts = {"head": sec["heading"].upper(), "brand": brand.upper(),
              "credit": "Footage: " + ", ".join(sorted({json.loads((config.WORKSPACE / v / "meta.json").read_text(
-                 encoding="utf-8"))["channel"] for v, _, _ in sec["broll"]}))}
+                 encoding="utf-8"))["channel"] for v, _, _ in broll}))}
     if intro_title:
         texts["title"] = intro_title.upper()
     if n == total:
@@ -115,8 +169,8 @@ def _section(n, sec, total, work, brand, intro_title):
     tf = lambda k: f"textfile='{_esc(work / f'{n:02d}.{k}.txt')}'"  # noqa: E731
     h0 = 3.8 if intro_title else 0.2  # heading slides in after the title card
     slide = f"if(lt(t-{h0},0.35),-tw+(tw+110)*(t-{h0})/0.35,110)"
-    f = [f"drawbox=x=0:y=ih-300:w=26:h=130:color={RED}:t=fill:enable='between(t,{h0},{h0 + 5})'",
-         f"drawtext={tf('head')}:fontfile='{IMPACT}':fontsize=96:fontcolor={YELLOW}:x='{slide}':y=h-292"
+    f = [f"drawbox=x=0:y=ih-470:w=26:h=130:color={RED}:t=fill:enable='between(t,{h0},{h0 + 5})'",
+         f"drawtext={tf('head')}:fontfile='{IMPACT}':fontsize=96:fontcolor={YELLOW}:x='{slide}':y=h-462"
          f":box=1:boxcolor=black@0.72:boxborderw=22:enable='between(t,{h0},{h0 + 5})'",
          f"drawtext={tf('brand')}:fontfile='{IMPACT}':fontsize=48:fontcolor=white:x=w-tw-60:y=50"
          f":box=1:boxcolor={RED}@0.9:boxborderw=14",
@@ -137,7 +191,9 @@ def _section(n, sec, total, work, brand, intro_title):
               f"drawtext={tf('sub')}:fontfile='{IMPACT}':fontsize=110:fontcolor=white:alpha='{a}'"
               f":x=(w-tw)/2:y=(h-th)/2:enable='gt(t,{s0})'"]
     vf = (f"scale_cuda={W}:{H}:interp_algo=lanczos:force_original_aspect_ratio=decrease,hwdownload,format=nv12,"
-          f"pad={W}:{H}:(ow-iw)/2:(oh-ih)/2,fps=30,format=yuv420p," + ",".join(f))
+          f"pad={W}:{H}:(ow-iw)/2:(oh-ih)/2,fps=30,format=yuv420p,"
+          + ("cas=0.35," if low else "")  # light sharpening for footage upscaled from below 1440p
+          + ",".join(f) + f",ass='{_esc(work / f'{n:02d}.ass')}'")
     out = work / f"{n:02d}.mp4"
     subprocess.run(["ffmpeg", "-y", "-v", "error", "-hwaccel", "cuda", "-hwaccel_output_format", "cuda",
                     "-f", "concat", "-safe", "0", "-i", str(lst), "-i", str(wav),
@@ -165,8 +221,8 @@ def validate(s):
             bad.append(f"section {n}: heading must be 3-40 characters")
         if len(sec.get("text", "").split()) < 25:
             bad.append(f"section {n}: narration under 25 words")
-        if re.search(r"\d", sec.get("text", "")):
-            bad.append(f"section {n}: spell numbers as words in the narration (the voice reads digits badly)")
+        if re.search(r"\d{2}", sec.get("text", "")):  # "GTA 6" and "PS5" are fine; "30" and "212" are not
+            bad.append(f"section {n}: spell numbers of two or more digits as words (the voice reads them badly)")
         if not sec.get("broll"):
             bad.append(f"section {n}: no broll")
         for item in sec.get("broll", []):
@@ -199,8 +255,20 @@ def build(script_path):
         t += dur
     (work / "list.txt").write_text("".join(f"file '{p.name}'\n" for p in parts), encoding="utf-8")
     final = work / "final.mp4"
-    subprocess.run(["ffmpeg", "-y", "-v", "error", "-f", "concat", "-safe", "0", "-i", "list.txt", "-c", "copy",
-                    "-movflags", "+faststart", str(final.resolve())], check=True, cwd=work)
+    tracks = sorted(p for p in (config.ROOT / "assets" / "music").glob("*") if p.suffix.lower() in MUSIC_EXT)
+    if tracks:  # quiet bed under the voice; video stream is copied, only audio is re-encoded
+        track = tracks[sum(map(ord, script_path.stem)) % len(tracks)]
+        print(f"  music: {track.name}")
+        mix = (f"[1:a]volume={MUSIC_VOLUME},afade=t=in:d=2,afade=t=out:st={max(0, t - 4):.2f}:d=4[m];"
+               f"[0:a][m]amix=inputs=2:duration=first:normalize=0[a]")
+        subprocess.run(["ffmpeg", "-y", "-v", "error", "-f", "concat", "-safe", "0", "-i", "list.txt",
+                        "-stream_loop", "-1", "-i", str(track), "-filter_complex", mix, "-map", "0:v:0",
+                        "-map", "[a]", "-c:v", "copy", "-c:a", "aac", "-b:a", "192k", "-t", f"{t:.2f}",
+                        "-movflags", "+faststart", str(final.resolve())], check=True, cwd=work)
+    else:
+        print("  no music: put royalty-free tracks in assets/music/ (see assets/music/README.md)")
+        subprocess.run(["ffmpeg", "-y", "-v", "error", "-f", "concat", "-safe", "0", "-i", "list.txt", "-c", "copy",
+                        "-movflags", "+faststart", str(final.resolve())], check=True, cwd=work)
     from . import review
     got = float(subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0",
                                 str(final)], capture_output=True, text=True).stdout or 0)

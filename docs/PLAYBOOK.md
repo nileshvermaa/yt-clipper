@@ -36,19 +36,26 @@ Known bad sources for cropping: channels with huge burned-in captions (Hazard), 
 
 ## 5. Narrated video: script
 
-- Topic: from `python -m clipper trends` (this week's most-viewed). Real GTA 6 news only; one topic per video;
+- Topic: from `python -m clipper trends`: this week's most-viewed uploads, what people are searching on YouTube
+  right now, and Rockstar's newest official uploads. A new official upload is always the top topic. Real GTA 6 news only; one topic per video;
   never a topic already in `workspace/explainers/*.json`.
 - 6-8 sections, 550-750 words. Audience: GTA fans aged 16-30. Hook in sentence one, short spoken sentences,
   one idea per section, a question for the comments and a subscribe ask at the end.
 - Original commentary in your own words. Attribute ("Rockstar confirmed", "according to previews"); mark rumors
   as rumors; say only what the source transcripts support; no profanity.
-- Spell numbers as words. `explain` refuses scripts with digits, wrong length, or unprepared videos and says why.
+- Spell numbers as words ("thirty frames per second"); "GTA 6" and "PS5" stay as they are. `explain` refuses
+  scripts with multi-digit numbers, wrong length, or unprepared videos and says why.
 
 ## 6. Narrated video: footage and look
 
 - `broll` ranges: 60-150 s where that topic is discussed **and game footage is on screen**. If a source shows
   another game or mostly a webcam, take footage from another prepared GTA 6 video and keep the original in `sources`.
-- Automatic: 5 s cuts; text cards, black frames and webcam faces are skipped; voice `am_michael` at speed 1.05,
+- **Prefer official footage.** `workspace/library.json` lists Rockstar's own trailers (prepared by
+  `python -m clipper library`, 4K, no creator overlays). Use their ids in `broll` whenever the section is general
+  (intro, story, characters, outro). Use creators' footage only when the section needs that specific material.
+  A section whose footage is all unusable falls back to official footage automatically.
+- Automatic: burned-in captions (5 words at a time, timed to the voice); quiet music bed if `assets/music/` has
+  tracks; light sharpening when footage is below 1440p; 5 s cuts; text cards, black frames and webcam faces are skipped; voice `am_michael` at speed 1.05,
   synthesized per sentence; title card, sliding yellow headings with a red bar, channel tag top-right, footage
   credit bottom-right, subscribe card. Do not change fonts/colours per video: consistency is the brand.
 - After building, open `final.sheet.jpg`. Wrong game, a face, or broken frames -> fix the ranges and rebuild.
@@ -66,6 +73,8 @@ text-heavy screenshot. Headline 2-3 words in caps. Shorts thumbnails cannot be s
 | `ModuleNotFoundError` | use `.venv\Scripts\python.exe`, not system Python |
 | ffmpeg not found | refresh PATH (see task files) |
 | voice-over "looks garbled" | rephrase that section into shorter sentences and rebuild |
+| "Sign in to confirm your age" | that video needs `secrets/cookies.txt`; it is skipped, pick another source |
+| "no music" | optional: add royalty-free tracks to `assets/music/` |
 | "hi-res B-roll failed" | YouTube throttled; the low-bitrate copy was used. Rebuild later for full quality |
 | "thumbnail refused" | custom thumbnails not enabled: youtube.com/features |
 | "stats need read access" | run `python -m clipper auth` again |

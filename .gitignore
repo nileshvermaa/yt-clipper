@@ -26,3 +26,5 @@ __pycache__/
 .idea/
 Thumbs.db
 .DS_Store
+assets/music/*
+!assets/music/README.md

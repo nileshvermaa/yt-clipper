@@ -225,3 +225,14 @@ Quality rules now built in:
 - Voice-over is synthesized sentence by sentence (long passages made Kokoro garble a section).
 - `python -m clipper trends [query]`: this week's most-viewed videos for a search, for topic picking.
 - `PREPARE_MAX_VIDEOS` (2) caps new downloads per run to keep the PC load low.
+
+## Captions, music, official footage, sharpening, trend sources
+
+- Narrated videos get burned-in captions (5 words at a time, timed from the per-sentence voice-over).
+- `assets/music/`: drop royalty-free tracks there and every narrated video gets a quiet looped music bed.
+- `python -m clipper library` prepares Rockstar's official GTA VI trailers (`workspace/library.json`) as clean
+  B-roll; sections with no usable footage fall back to it. Age-restricted official videos are skipped unless
+  `secrets/cookies.txt` exists.
+- Footage below 1440p gets light sharpening (`cas=0.35`) when upscaled. AI upscaling (Real-ESRGAN) is not used:
+  it would hold the GPU at full load for about an hour per video.
+- `python -m clipper trends` also shows live YouTube search suggestions and Rockstar's newest uploads.

@@ -177,3 +177,44 @@ def fetch_range(video_id, start, end):
     with yt_dlp.YoutubeDL(opts) as ydl:
         ydl.download([f"https://www.youtube.com/watch?v={video_id}"])
     return out
+
+
+OFFICIAL = "https://www.youtube.com/@RockstarGames/videos"
+OFFICIAL_WORDS = ("grand theft auto vi", "gta vi")
+
+
+def official_videos(limit=60):
+    """Rockstar's own GTA VI uploads, newest first: [(id, duration_sec, title)]."""
+    with yt_dlp.YoutubeDL(_base_opts() | {"extract_flat": True, "playlistend": limit}) as ydl:
+        entries = ydl.extract_info(OFFICIAL, download=False).get("entries", [])
+    return [(e["id"], int(e.get("duration") or 0), e.get("title") or "") for e in entries
+            if e.get("id") and any(w in (e.get("title") or "").lower() for w in OFFICIAL_WORDS)]
+
+
+def build_library():
+    """Prepare the official trailers as B-roll sources and list them in workspace/library.json."""
+    lib = []
+    for vid, dur, title in official_videos():
+        if dur < 60:
+            continue  # teasers are too short to cut B-roll from
+        try:
+            fetch(f"https://www.youtube.com/watch?v={vid}")
+        except Exception as e:  # age-restricted videos need secrets/cookies.txt; the rest still make a library
+            print(f"  skipped {title}: {str(e)[:90]}")
+            continue
+        lib.append({"id": vid, "duration": dur, "title": title})
+    (config.WORKSPACE / "library.json").write_text(json.dumps(lib, indent=2), encoding="utf-8")
+    return lib
+
+
+def suggestions(query="gta 6 "):
+    """What people are typing into YouTube search right now (public autocomplete endpoint)."""
+    import urllib.parse
+    import urllib.request
+    url = "https://suggestqueries.google.com/complete/search?client=firefox&ds=yt&q=" + urllib.parse.quote(query)
+    try:
+        req = urllib.request.Request(url, headers={"User-Agent": "yt-clipper/0.1"})
+        return json.loads(urllib.request.urlopen(req, timeout=15).read().decode("utf-8", "replace"))[1]
+    except Exception as e:  # a trend hint, never worth failing a run for
+        print(f"  suggestions unavailable ({str(e)[:60]})")
+        return []

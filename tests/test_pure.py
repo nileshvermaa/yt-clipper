@@ -54,6 +54,8 @@ def test_explainer_validate():
     bad = explainer.validate({"title": "A fine title", "sections": [sec] * 6})
     assert any("not prepared" in b for b in bad)
     assert not any("sections" in b or "words of narration" in b for b in bad)
+    ok = explainer.validate({"title": "A fine title", "sections": [sec | {"text": "GTA 6 on PS5 " * 30}] * 6})
+    assert not any("spell numbers" in b for b in ok)
     assert any("spell numbers" in b for b in explainer.validate(
         {"title": "A fine title", "sections": [sec | {"text": "it runs at 30 fps " * 20}] * 6}))
     assert any("sections; use" in b for b in explainer.validate({"title": "x", "sections": []}))

@@ -18,7 +18,7 @@ def _faces(img, min_share=0.015):
     return any(area >= min_share * img.shape[0] * img.shape[1] for _, area in _FACE[0](img))
 
 
-def _score(img):
+def _score(img, faces=True):
     """Colourful game footage with a big person or vehicle wins; text cards and screenshots lose."""
     from . import subject
     bright = img.mean()
@@ -27,7 +27,7 @@ def _score(img):
     white = (gray > 225).mean()
     if bright < 40 or bright > 210 or white > 0.2 or flat > 0.5:
         return 0
-    if _faces(img):  # a creator's webcam is not our footage (also drops some in-game close-ups)
+    if faces and _faces(img):  # a creator's webcam is not our footage (also drops some in-game close-ups)
         return 0
     b, g, r = cv2.split(img.astype("float"))
     rg, yb = np.abs(r - g), np.abs(0.5 * (r + g) - b)
