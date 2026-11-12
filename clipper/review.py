@@ -4,6 +4,7 @@ Free checks (no API, nearly no CPU): file sanity, silent audio, near-duplicates,
 sheet (6 frames) that Claude looks at before approving. Per-video log in workspace/<id>/log.txt.
 """
 import datetime as dt
+import os
 import re
 import subprocess
 from pathlib import Path
@@ -71,7 +72,11 @@ def prepare_review(meta, clips, save):
             log(meta, f"clip {c['n']} rejected automatically: {c['reason']}")
             continue
         png = Path(c["file"]).with_suffix(".sheet.jpg")
-        sheet(c["file"], png)
+        if not sheet(c["file"], png):  # truncated render (killed process, lost connection): render it again
+            os.remove(c["file"])
+            c["status"] = "selected"
+            log(meta, f"clip {c['n']} file unreadable; queued for re-render")
+            continue
         c["status"], c["sheet"] = "review", str(png)
         log(meta, f"clip {c['n']} ready for review: {png.name}")
         waiting.append(c)
