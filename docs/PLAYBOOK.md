@@ -54,6 +54,8 @@ Known bad sources for cropping: channels with huge burned-in captions (Hazard), 
   `python -m clipper library`, 4K, no creator overlays). Use their ids in `broll` whenever the section is general
   (intro, story, characters, outro). Use creators' footage only when the section needs that specific material.
   A section whose footage is all unusable falls back to official footage automatically.
+- Automatic: branded intro (4.5 s, channel name) and outro (10 s, room for end-screen cards) from `assets/brand/intro.mp4` and
+  `outro.mp4` (Gemini/Veo clips, not committed; trimmed and cached as `*.ready.mp4`). Delete the `.ready.mp4` to rebuild.
 - Automatic: burned-in captions (5 words at a time, timed to the voice); quiet music bed if `assets/music/` has
   tracks; light sharpening when footage is below 1440p; 5 s cuts; text cards, black frames and webcam faces are skipped; voice `am_michael` at speed 1.05,
   synthesized per sentence; title card, sliding yellow headings with a red bar, channel tag top-right, footage

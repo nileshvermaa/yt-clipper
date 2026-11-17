@@ -37,6 +37,32 @@ def _channel_name():
     return json.loads(cache.read_text(encoding="utf-8"))["title"]
 
 
+BRAND = config.ROOT / "assets" / "brand"
+# (source file, start s, length s); the Gemini clips run 10 s / 20 s but only these parts are usable
+BRAND_CUTS = {"intro": ("intro.mp4", 0, 4.5), "outro": ("outro.mp4", 7, 10)}
+
+
+def _brand(kind, name):
+    """Intro/outro from assets/brand/, trimmed and normalised once to the section format; None if absent."""
+    src, a, d = BRAND_CUTS[kind]
+    if not (BRAND / src).exists():
+        return None, 0.0
+    out = BRAND / f"{kind}.ready.mp4"
+    if not out.exists() or out.stat().st_mtime < (BRAND / src).stat().st_mtime:
+        vf = (f"delogo=x=1132:y=574:w=56:h=56,scale={W}:{H}:flags=lanczos,fps=30,format=yuv420p,"  # Gemini sparkle
+              f"fade=t=out:st={d - 0.5}:d=0.5")
+        if kind == "intro":
+            txt = BRAND / "name.txt"
+            txt.write_text(name.upper(), encoding="utf-8")
+            vf += (f",drawtext=textfile='{_esc(txt)}':fontfile='{IMPACT}':fontsize=150:fontcolor={YELLOW}"
+                   f":borderw=6:bordercolor=black:alpha='min(1,(t-2.6)/0.4)':x=(w-tw)/2:y=(h-th)/2:enable='gt(t,2.6)'")
+        subprocess.run(["ffmpeg", "-y", "-v", "error", "-ss", str(a), "-t", str(d), "-i", str(BRAND / src),
+                        "-vf", vf, "-af", f"loudnorm=I=-16:TP=-1.5,aresample=48000,afade=t=out:st={d - 0.5}:d=0.5",
+                        "-ac", "2", "-c:v", "h264_nvenc", "-preset", "p6", "-rc", "vbr", "-cq", "19", "-b:v", "0",
+                        "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "192k", str(out)], check=True)
+    return out, d
+
+
 _KOKORO = []
 
 
@@ -247,13 +273,22 @@ def build(script_path):
     work.mkdir(parents=True, exist_ok=True)
     brand = _channel_name()
     parts, chapters, t = [], [], 0.0
+    intro, d_in = _brand("intro", brand)
+    if intro:  # chapters must start at 0:00 for YouTube, so the intro is the first chapter
+        parts.append(intro)
+        chapters.append("0:00 Intro")
+        t = d_in
     for n, sec in enumerate(s["sections"], 1):
         print(f"  [{n}/{len(s['sections'])}] {sec['heading']}")
         out, dur = _section(n, sec, len(s["sections"]), work, brand, s["title"] if n == 1 else None)
         parts.append(out)
         chapters.append(f"{comp._ts(t)} {sec['heading']}")
         t += dur
-    (work / "list.txt").write_text("".join(f"file '{p.name}'\n" for p in parts), encoding="utf-8")
+    outro, d_out = _brand("outro", brand)
+    if outro:
+        parts.append(outro)
+        t += d_out
+    (work / "list.txt").write_text("".join(f"file '{p.resolve().as_posix()}'\n" for p in parts), encoding="utf-8")
     final = work / "final.mp4"
     tracks = sorted(p for p in (config.ROOT / "assets" / "music").glob("*") if p.suffix.lower() in MUSIC_EXT)
     if tracks:  # quiet bed under the voice; video stream is copied, only audio is re-encoded
