@@ -8,7 +8,8 @@ what it can; this file holds the judgment calls. The scheduled tasks in `docs/ta
 - 4 Shorts + 1 narrated video per day, uploaded at 13:00; 1 compilation on Sunday. YouTube quota allows 6 uploads/day.
 - `PREPARE_MAX_VIDEOS=2` new downloads per run, `CPU_THREADS=3`, decode/scale/encode on the GPU. One run at a time
   (file lock). Never raise these to "catch up"; the backlog of approved clips is the buffer.
-- Everything uploads **Private**. A human makes videos public.
+- Everything uploads **Private**. A human makes videos public. `upload-pending` takes the newest downloads first,
+  so fresh news goes out before the older backlog.
 
 ## 2. Picture quality (why things looked like 360p, and the rules that fixed it)
 
@@ -24,6 +25,8 @@ what it can; this file holds the judgment calls. The scheduled tasks in `docs/ta
 - Open with a hook in the first sentence; understandable alone; end on a finished thought; 25-75 s, shorter is
   better (under 35 s clips are replayed; long ones lose ~80% of viewers on this channel).
 - Skip ads, sponsor reads, "subscribe" asks, and rumors naming real people.
+- Reject clips whose footage is another game (GTA 5 / Red Dead comparisons are common in "everything you need to
+  know" videos), even when the narration is about GTA 6.
 - Title: 3-7 words, under 45 characters, "GTA 6" early, one word in CAPS, ends with "..." or "!?". True to the clip.
   Concrete news hooks win ("Kodak Black is IN GTA 6"); "Concept"/"Fan Concept" titles flop.
 - If `candidates.txt` ends with "WHAT WORKS ON THIS CHANNEL", follow it: it is this channel's own analytics.

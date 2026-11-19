@@ -193,7 +193,9 @@ def cmd_watch(do_upload):
 
 
 def cmd_upload_pending():
-    for meta, clips in all_videos():
+    # newest downloads first: news goes stale, the older backlog fills the rest of the quota
+    newest = sorted(all_videos(), key=lambda mc: -(Path(mc[0]["workdir"]) / "meta.json").stat().st_mtime)
+    for meta, clips in newest:
         if any(c["status"] == ("approved" if config.REVIEW_BEFORE_UPLOAD else "rendered") for c in clips):
             print(f"== {meta['title']}")
             if not upload_clips(meta, clips):
