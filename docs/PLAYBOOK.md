@@ -24,6 +24,11 @@ what it can; this file holds the judgment calls. The scheduled tasks in `docs/ta
 
 - Open with a hook in the first sentence; understandable alone; end on a finished thought; 25-75 s, shorter is
   better (under 35 s clips are replayed; long ones lose ~80% of viewers on this channel).
+- Opening line (rules borrowed from SupoClip's opening review): never start on a dangling conjunction ("But",
+  "And", "Because", "So that's why"), on a 1-2 word fragment ("No. No? Ah!"), or on banter before the point. Move
+  the start to the first self-contained sentence; if that loses more than ~15 s or the point, pick another moment.
+- In list videos ("50 details", "20 secrets"), one item = one clip: start where the item is named, end when the
+  narrator moves to the next one.
 - Skip ads, sponsor reads, "subscribe" asks, and rumors naming real people.
 - Reject clips whose footage is another game (GTA 5 / Red Dead comparisons are common in "everything you need to
   know" videos), even when the narration is about GTA 6.
