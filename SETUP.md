@@ -213,9 +213,8 @@ Script format (Claude writes it in the app from the source transcripts; narratio
 
 | When | Task | What |
 |---|---|---|
-| 9:00 daily | GTA 6 daily production | analytics, up to 2 new videos -> Shorts picked, rendered, reviewed; `trends` -> script -> narrated video built. No uploads. |
-| 13:00 daily | GTA 6 daily upload | `upload-pending` (4 Shorts) + today's narrated video with its thumbnail |
-| Sun 16:00 | GTA 6 weekly compilation | weekly 16:9 compilation |
+| 11:00 daily | GTA 6 daily run | trend search -> 5 Shorts + 1 narrated video, reviewed -> uploads all 6 (Private). Steps: `docs/tasks/daily-run.md` |
+| manual | weekly compilation | `docs/tasks/weekly-compilation.md` when quota is free |
 
 Quality rules now built in:
 - The copy saved on disk is only ~1.3-2.9 Mbps 1080p and is used for analysis only. Explainer B-roll is fetched

@@ -5,9 +5,13 @@ what it can; this file holds the judgment calls. The scheduled tasks in `docs/ta
 
 ## 1. Daily output and load
 
-- 4 Shorts + 1 narrated video per day, uploaded at 13:00; 1 compilation on Sunday. YouTube quota allows 6 uploads/day.
+- One scheduled run a day at 11:00 (`docs/tasks/daily-run.md`): trend search -> 5 Shorts + 1 narrated video ->
+  review -> upload. YouTube quota allows 6 uploads/day; the quota day follows Pacific time, so `status` can show
+  yesterday's date in the morning in India. The weekly compilation is manual now (`docs/tasks/weekly-compilation.md`).
+- Only one clipper command runs at a time (file lock). Do not start manual runs while the 11:00 run is working:
+  a blocked `explain` simply exits and that day's video is lost.
 - `PREPARE_MAX_VIDEOS=2` new downloads per run, `CPU_THREADS=3`, decode/scale/encode on the GPU. One run at a time
-  (file lock). Never raise these to "catch up"; the backlog of approved clips is the buffer.
+  (file lock). `MAX_UPLOADS_PER_RUN` is 4 in `.env`; the daily run overrides it to 5 for one command. Never raise the others to "catch up"; the backlog of approved clips is the buffer.
 - Everything uploads **Private**. A human makes videos public. `upload-pending` takes the newest downloads first,
   so fresh news goes out before the older backlog.
 
@@ -36,11 +40,30 @@ what it can; this file holds the judgment calls. The scheduled tasks in `docs/ta
   Concrete news hooks win ("Kodak Black is IN GTA 6"); "Concept"/"Fan Concept" titles flop.
 - If `candidates.txt` ends with "WHAT WORKS ON THIS CHANNEL", follow it: it is this channel's own analytics.
 
+## 3a. Finding trending sources
+
+- `trends` alone is not enough after launch: also search YouTube for this week's most-viewed videos (filter
+  `sp=CAMSBAgCEAE`) with the phrases players type: "hidden details", "secrets", "things you can do", "tips and
+  tricks", "easter eggs", "first mission". Topics that worked: launch reviews (IGN, gameranx), "50 details" lists
+  (T5G), missables and money tips (BiggySweats), easter eggs (ZacCoxTV), car/weapon mechanics (HarmNone).
+- Best Shorts sources are narrated list/tips videos (one item = one clip, 25-45 s). Poor sources: livestreams and
+  multi-hour walkthroughs (no hooks, huge downloads), funny-moment compilations (profanity, source captions),
+  facecam-heavy "testing" videos, "everything you need to know" videos that cut to GTA 5 / Red Dead footage,
+  and "GTA 6 mods/cheats" results (almost all GTA 5 mods or clickbait in launch week).
+- Never re-upload someone's full video or full mission playthrough (copyright strikes, reused-content
+  demonetisation). Make a narrated breakdown with short credited excerpts instead.
+- Story topics (first mission, endings) are allowed with "(SPOILERS)" in the title and thumbnail badge.
+
 ## 4. Shorts: review (contact sheet) - reject when unsure
 
 Approve only if: picture sharp; subject in frame; on-screen text readable and not clipped at the edges; our captions
 do not sit on the source's own big captions or on stream chat; no black/loading frames; not a near-duplicate.
 Known bad sources for cropping: channels with huge burned-in captions (Hazard), live streams with chat overlays.
+- Source's big title text cut off at the edges, but the clip is good: re-render it full-frame instead of rejecting
+  (status back to `selected`, delete `clipN/short*`, run `FRAMING=blur python -m clipper finish`).
+- Reject: a webcam face filling the frame in most of the sheet, footage of another game, a clip that runs into the
+  narrator's next item, a source caption sitting on top of ours, grey/broken frames.
+- The `reaction` layout (gameplay on top, facecam below) is acceptable when the gameplay half shows the topic.
 
 ## 5. Narrated video: script
 
@@ -68,7 +91,14 @@ Known bad sources for cropping: channels with huge burned-in captions (Hazard), 
   tracks; light sharpening when footage is below 1440p; 5 s cuts; text cards, black frames and webcam faces are skipped; voice `am_michael` at speed 1.05,
   synthesized per sentence; title card, sliding yellow headings with a red bar, channel tag top-right, footage
   credit bottom-right, subscribe card. Do not change fonts/colours per video: consistency is the brand.
-- After building, open `final.sheet.jpg`. Wrong game, a face, or broken frames -> fix the ranges and rebuild.
+- Check ranges BEFORE building (the six-frame sheet misses most problems). One grid per range, time stamped:
+  `ffmpeg -ss A -t LEN -i workspace/<id>/source.mp4 -vf "fps=1/5,scale=240:-1,drawtext=fontfile='C\:/Windows/Fonts/arialbd.ttf':text='%{eif\:t+A\:d}':fontcolor=yellow:fontsize=24,tile=10x2" -frames:v 1 grid.jpg`
+  Review sites compare with older games (IGN's review showed GTA 4/5 bank heists with a "Grand Theft Auto V" label)
+  and cut to the reviewer's webcam; split ranges around those seconds (each range at least 30 s).
+- After building, open `final.sheet.jpg` and grab a few frames from `final.mp4`. Wrong game, a face, or broken
+  frames -> fix the ranges and rebuild. A single glitch frame from the source's own transition is acceptable.
+- Extra videos on a day that already has `<today>.json`: use another file name (`hidden-details.json`); never
+  overwrite the dated script, the daily run uses it.
 
 ## 7. Thumbnails
 
@@ -95,3 +125,19 @@ text-heavy screenshot. Headline 2-3 words in caps. Shorts thumbnails cannot be s
 
 Change code, run `ruff check .` and `pytest -q`, update this file and `docs/tasks/*.md` in the same commit, push.
 The scheduled tasks read `docs/tasks/*.md` at run time, so the repo is the single source of truth.
+
+## 10. Decisions and research (so nobody repeats them)
+
+- No Anthropic API key, by choice: the assistant running the scheduled task picks clips and writes scripts.
+- OpusClip / Vyro (ImagineArt): free tiers are watermarked, expire or need credit; OpusClip's API needs a paid
+  plan. Not integrated. Fine for occasional manual use (a second opinion on clip picks, channel art).
+- SupoClip (github.com/FujiwaraChoki/supoclip): needs Docker, Postgres, a web frontend and an OpenAI/Anthropic/
+  Google key; noncommercial licence (individual creators allowed). Not installed; its clip-opening rules are in
+  section 3.
+- Real-ESRGAN upscaling: too heavy for the RTX 3050; `cas` sharpening is used instead.
+- Reddit trends: blocked (403) for scripts; Rockstar Newswire is JS-only, so Rockstar's YouTube channel is used.
+- Music: 12 tracks from the YouTube Audio Library channel in `assets/music/` (not committed). Scott Buckley tracks
+  (track07, track08) may need credit in the description. Bandcamp "onemansymphony" had no usable licensed music.
+- Brand: intro/outro made with Gemini (Veo), stored in `assets/brand/`; Shorts get no intro/outro (75 s limit).
+- Analytics so far: clips under 35 s get ~85% watched and the most views; T5G and DarkViperAU sources do best,
+  Hazard and DubStepZz worst; "Concept" titles flop.

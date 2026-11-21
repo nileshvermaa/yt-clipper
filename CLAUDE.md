@@ -1,7 +1,7 @@
 # yt-clipper: notes for AI assistants
 
 - Read `docs/PLAYBOOK.md` before picking clips, writing scripts, reviewing or changing the pipeline.
-- Scheduled runs follow `docs/tasks/daily-production.md`, `daily-upload.md`, `weekly-compilation.md`.
+- The scheduled run (11:00 daily) follows `docs/tasks/daily-run.md`; `weekly-compilation.md` is manual.
 - Always use `.venv\Scripts\python.exe -m clipper ...` from `G:\gta6`. In PowerShell refresh PATH first:
   `$env:Path = [Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [Environment]::GetEnvironmentVariable("Path","User")`
 - No Anthropic API key: the assistant itself writes `picks.json` and explainer scripts.
