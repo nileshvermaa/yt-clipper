@@ -109,6 +109,7 @@ text-heavy screenshot. Headline 2-3 words in caps. Shorts thumbnails cannot be s
 
 | Symptom | Cause / fix |
 |---|---|
+| `uploadLimitExceeded` (HTTP 400) | YouTube's own rolling-24-hour channel limit, separate from our 6/day counter. Uploads from the previous day's run still count until 24 h have passed, so a run earlier than yesterday's hits it. Wait and retry every 10 min; keep the daily run at a fixed time |
 | "another clipper run is still going" | a run is active; wait. Stale python processes: kill them, the lock frees itself |
 | `ModuleNotFoundError` | use `.venv\Scripts\python.exe`, not system Python |
 | ffmpeg not found | refresh PATH (see task files) |

@@ -50,7 +50,8 @@ clipper command can run at a time, so never start two in parallel.
 12. Open thumb.1-3.jpg and choose N (PLAYBOOK section 7).
 
 ## D. Upload (Private)
-13. `MAX_UPLOADS_PER_RUN=5 python -m clipper upload-pending` (PowerShell: `$env:MAX_UPLOADS_PER_RUN="5"`).
+13. (If an upload fails with `uploadLimitExceeded`, wait 10 minutes and retry, up to 2 hours: see PLAYBOOK section 8.)
+    `MAX_UPLOADS_PER_RUN=5 python -m clipper upload-pending` (PowerShell: `$env:MAX_UPLOADS_PER_RUN="5"`).
     It uploads the newest approved clips first.
 14. `python -m clipper explain workspace\explainers\<today>.json --upload --pick N`
 15. `python -m clipper status` and confirm 6/6.
